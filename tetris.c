@@ -9,8 +9,9 @@ typedef struct{
     char nome;
 } Peca;
 
-//definindo tamanho do vetor
+//definindo tamanho da fila e o tamanho maximo da pilha
 #define MAX 5
+#define MAX_PILHA 3
 
 //struct da fila
 typedef struct{
@@ -20,6 +21,13 @@ typedef struct{
     int quantidade;
 } Fila;
 
+//struct da pilha que guarda as peças
+typedef struct{
+    Peca peca[MAX_PILHA];
+    int topo;
+} Pilha;
+
+//===== FUNÇÕES DE FILA E PEÇA =====
 //função para gerar iuma peça
 Peca gerarPeca(int id){
     char tipo[] = {'I', 'O', 'T', 'L'};
@@ -55,7 +63,7 @@ Peca dequeue(Fila *f){
 
 //função para mostrar a fila
 void mostrarFila(Fila *f){
-
+    printf("\nFILA: \n");
     for(int i = 0; i < f->quantidade; i++){
 
         int indice = (f->inicio + i) % MAX;
@@ -68,13 +76,65 @@ void mostrarFila(Fila *f){
     printf("\n");
 }
 
+//===== FUNÇÔES DA PILHA =====
+//função para inicializar peça
+void inicializarPilha(Pilha *p){
+
+    p->topo = -1;
+}
+
+//verificar se a peça está cheia
+int pilhaCheia(Pilha *p){
+
+    return p->topo == MAX_PILHA -1;
+}
+
+//verificar se a pilha está vazia
+int pilhaVazia(Pilha *p){
+
+    return p->topo == -1;
+}
+
+//push para colocar a peça na pilha
+void push(Pilha *p, Peca nova){
+    
+    p->topo++;
+    p->peca[p->topo] = nova;
+}
+
+//pop para remoção de peça
+Peca pop(Pilha *p){
+    
+    Peca removida = p->peca[p->topo];
+    p->topo--;
+    return removida;
+}
+
+//função para mostrar a pilha
+void mostraPilha(Pilha *p){
+
+    printf("\nPILHA: \n");
+    if(pilhaVazia(p)){
+
+        printf("A pilha está vazia.\n");
+        return;
+    }
+    for(int i = p->topo; i >= 0; i--){
+
+        printf("[%d:%c]", p->peca[i].id, p->peca[i].nome);
+        printf("\n");
+    }
+}
 //código main
 int main(){
 
     srand(time(NULL));
     
     Fila fila;
-    inicializarFila(&fila);
+    inicializarFila(&fila);//para inicializar a fila
+
+    Pilha pilha;
+    inicializarPilha(&pilha);//para inicializar apilha
 
     for(int i= 0; i < MAX; i++){
         enqueue(&fila, gerarPeca(i + 1));
@@ -84,20 +144,20 @@ int main(){
 
     int opcao;
     do{
-
+        
         //menu do jogo:
     printf("\n   TETRIS   \n");
     printf("Selecione uma opção: \n");
     printf("1 - Jogar peça \n");
-    printf("2 - Insetrir peça \n");
-    printf("3 - Mostrar peça \n");
+    printf("2 - Reservar peça \n");
+    printf("3 - Usar peça reservada \n");
     printf("0 - Sair\n");
     scanf("%d", &opcao);
 
     switch(opcao){
 
-        case 1:
-
+        case 1:{
+        
         Peca removida = dequeue(&fila);
         printf("Peca jogada: [%d:%c]\n",
             removida.id,
@@ -106,25 +166,43 @@ int main(){
         enqueue(&fila, gerarPeca(novoID));
         novoID++;
         mostrarFila(&fila);
+        mostraPilha(&pilha);
         break;
-
-        case 2:
-
-        if(fila.quantidade < MAX){
-            enqueue(&fila, gerarPeca(novoID));
-            novoID++;
-
-        }else{
-            printf("Fila cheia!\n");
         }
 
-        mostrarFila(&fila);
-        break;
+        case 2:{
+            
+        if(!pilhaCheia(&pilha)){//verifica se a pilha não esta cheia
+            
+            Peca reservada = dequeue(&fila);//remove a peça da fila
+            push(&pilha, reservada);//coloca a peça na pilha
+            enqueue(&fila, gerarPeca(novoID));//repõe a peça na fila
+            novoID++;
+            printf("Peça reservada!\n");
+        }else{
 
-        case 3:
+            printf("A pilha está cheia.\n");
+        }
         mostrarFila(&fila);
+        mostraPilha(&pilha);
         break;
+        }
 
+        case 3:{
+
+        if(!pilhaVazia(&pilha)){ //verificar se a pilha não está vazia
+
+            Peca usada = pop(&pilha);//remove a peça do topo
+            printf("Peça usada: [%d:%c]\n", usada.id, usada.nome);//mostra qual foi usada
+        }else{
+
+            printf("A pilha está vazia.\n");
+        }
+        mostrarFila(&fila);
+        mostraPilha(&pilha);
+        break;
+        }
+        
         case 0:
         printf("Saindo...\n");
         break;
