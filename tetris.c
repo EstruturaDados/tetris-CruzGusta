@@ -11,7 +11,7 @@ typedef struct{
 
 //definindo tamanho da fila e o tamanho maximo da pilha
 #define MAX 5
-#define MAX_PILHA 3
+#define MAX_PILHA 5 //trocado de 3 para 5 para realizar a inversão da pilha com fila
 
 //struct da fila
 typedef struct{
@@ -53,6 +53,13 @@ void enqueue(Fila *f, Peca nova){
     f->quantidade++;
 }
 
+//funçaõ do enqueue para adicinar a peça na frente da fila
+void enqueueFrente(Fila *f, Peca nova){
+    f->inicio = (f->inicio - 1 + MAX) % MAX;
+    f->peca[f->inicio] = nova;
+    f->quantidade++;
+}
+
 //criação da dequeue para remover uma peça
 Peca dequeue(Fila *f){
     Peca removida = f->peca[f->inicio];
@@ -74,6 +81,11 @@ void mostrarFila(Fila *f){
     }
 
     printf("\n");
+}
+
+int filaVazia(Fila *f){
+
+    return f->quantidade == 0;
 }
 
 //===== FUNÇÔES DA PILHA =====
@@ -125,6 +137,13 @@ void mostraPilha(Pilha *p){
         printf("\n");
     }
 }
+
+//criação da struct para desfazer
+typedef struct{
+    int tipoAcao;
+    Peca peca;
+} Historico;
+
 //código main
 int main(){
 
@@ -135,6 +154,9 @@ int main(){
 
     Pilha pilha;
     inicializarPilha(&pilha);//para inicializar apilha
+
+    Historico ultimaAcao;
+    ultimaAcao.tipoAcao = -1; //guarda a ultima ação, qual peça foi mexida
 
     for(int i= 0; i < MAX; i++){
         enqueue(&fila, gerarPeca(i + 1));
@@ -151,6 +173,9 @@ int main(){
     printf("1 - Jogar peça \n");
     printf("2 - Reservar peça \n");
     printf("3 - Usar peça reservada \n");
+    printf("4 - Trocar peça do topo da pilha com a da frente da fila\n");
+    printf("5 - Desfazer ultima jogada\n");
+    printf("6 - Inverter fila com pilha\n");
     printf("0 - Sair\n");
     scanf("%d", &opcao);
 
@@ -158,34 +183,56 @@ int main(){
 
         case 1:{
         
-        Peca removida = dequeue(&fila);
-        printf("Peca jogada: [%d:%c]\n",
-            removida.id,
-            removida.nome);
+            if(!filaVazia(&fila)){
 
-        enqueue(&fila, gerarPeca(novoID));
-        novoID++;
-        mostrarFila(&fila);
-        mostraPilha(&pilha);
-        break;
+                Peca removida = dequeue(&fila);
+                ultimaAcao.tipoAcao = 1;
+                ultimaAcao.peca = removida;
+
+                printf("Peca jogada: [%d:%c]\n",
+                removida.id,
+                removida.nome);
+
+                enqueue(&fila, gerarPeca(novoID));
+                novoID++;
+            }else{
+
+                printf("A fila está vazia.\n");
+            }
+            
+            mostrarFila(&fila);
+            mostraPilha(&pilha);
+            break;
         }
 
         case 2:{
             
-        if(!pilhaCheia(&pilha)){//verifica se a pilha não esta cheia
-            
-            Peca reservada = dequeue(&fila);//remove a peça da fila
-            push(&pilha, reservada);//coloca a peça na pilha
-            enqueue(&fila, gerarPeca(novoID));//repõe a peça na fila
-            novoID++;
-            printf("Peça reservada!\n");
-        }else{
+            if(!pilhaCheia(&pilha) && !filaVazia(&fila)){
+        
+                Peca reservada = dequeue(&fila);
 
-            printf("A pilha está cheia.\n");
-        }
-        mostrarFila(&fila);
-        mostraPilha(&pilha);
-        break;
+                ultimaAcao.tipoAcao = 2;
+                ultimaAcao.peca = reservada;
+
+                push(&pilha, reservada);
+                enqueue(&fila, gerarPeca(novoID));
+                novoID++;
+
+                printf("Peça reservada!\n");
+
+            }else if(pilhaCheia(&pilha)){
+
+                printf("A pilha está cheia.\n");
+
+         }else{
+
+            printf("A fila está vazia.\n");
+         }
+
+            mostrarFila(&fila);
+            mostraPilha(&pilha);
+
+            break;
         }
 
         case 3:{
@@ -193,6 +240,10 @@ int main(){
         if(!pilhaVazia(&pilha)){ //verificar se a pilha não está vazia
 
             Peca usada = pop(&pilha);//remove a peça do topo
+
+            ultimaAcao.tipoAcao = 3;
+            ultimaAcao.peca = usada;
+
             printf("Peça usada: [%d:%c]\n", usada.id, usada.nome);//mostra qual foi usada
         }else{
 
@@ -201,6 +252,119 @@ int main(){
         mostrarFila(&fila);
         mostraPilha(&pilha);
         break;
+        }
+
+        case 4:{
+
+            if(!pilhaVazia(&pilha) && !filaVazia(&fila)){
+
+                Peca temp;
+                temp = fila.peca[fila.inicio];//guarda peça do inicio da fila
+                fila.peca[fila.inicio] = pilha.peca[pilha.topo];//coloca a peça na frente da fila
+                pilha.peca[pilha.topo] = temp;//coloca a peça antiga no topo da pilha
+                ultimaAcao.tipoAcao = 4;
+                printf("Troca realizada! \n");
+
+            }else if(pilhaVazia(&pilha)){
+
+                printf("A pilha está vazia.\n");
+
+            }else{
+
+                printf("A fila está vazia.\n");
+            }
+
+            mostrarFila(&fila);
+            mostraPilha(&pilha);
+
+            break;
+        }
+
+        case 5:{
+
+        //desfazer jogar peça
+         if(ultimaAcao.tipoAcao == 1){
+
+            fila.final = (fila.final - 1 + MAX) % MAX;
+            fila.quantidade--;
+
+            enqueueFrente(&fila, ultimaAcao.peca);
+
+            printf("Ultima jogada desfeita!\n");
+
+            ultimaAcao.tipoAcao = -1;
+        }else if(ultimaAcao.tipoAcao == 2){
+
+            //remove a peça nova gerada no final da fila
+            fila.final = (fila.final - 1 + MAX) % MAX;
+
+            fila.quantidade--;
+
+            //remove a peça da pilha
+            pop(&pilha);
+
+            //devolve a peça original para frente da fila
+            enqueueFrente(&fila, ultimaAcao.peca);
+
+            printf("Reserva desfeita!\n");
+
+            ultimaAcao.tipoAcao = -1;
+        }else if(ultimaAcao.tipoAcao == 3){
+
+        push(&pilha, ultimaAcao.peca);
+
+        printf("Uso da peça reservada desfeito!\n");
+
+        ultimaAcao.tipoAcao = -1;
+        }else if(ultimaAcao.tipoAcao == 4){
+
+            Peca temp;
+            temp = fila.peca[fila.inicio];
+
+            fila.peca[fila.inicio] = pilha.peca[pilha.topo];
+
+            pilha.peca[pilha.topo] = temp;
+
+            printf("Troca desfeita! \n");
+
+            ultimaAcao.tipoAcao = -1;
+        }else{
+
+            printf("Nenhuma jogada para desfazer.\n");
+        }
+
+        mostrarFila(&fila);
+        mostraPilha(&pilha);
+
+        break;
+        }
+
+        case 6:{
+
+            Fila filaAux;
+            inicializarFila(&filaAux);
+
+            Pilha pilhaAux;
+            inicializarPilha(&pilhaAux);
+
+            while(fila.quantidade > 0){
+                
+                push(&pilhaAux, dequeue(&fila));
+            }
+
+            while(!pilhaVazia(&pilha)){
+
+                enqueue(&filaAux, pop(&pilha));
+            }
+            
+            fila = filaAux;
+            pilha = pilhaAux;
+
+            printf("Fila e Pilha invertidas.\n");
+
+            mostrarFila(&fila);
+            mostraPilha(&pilha);
+            break;
         }
         
         case 0:
